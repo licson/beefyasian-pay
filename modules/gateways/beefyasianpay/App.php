@@ -165,7 +165,7 @@ class App
 
         $invoices->each(function ($invoice) {
             $transactions = $this->getTransactions($invoice['address'])->filter(function ($transaction) {
-                return ! $transaction->confirmed;
+                return !$transaction->confirmed;
             });
 
             $transactions->each(function ($transaction) use ($invoice) {
@@ -227,13 +227,13 @@ class App
 
         $inUseAddresses = $beefyInvoice->inUse()->get(['address']);
 
-        $availableAddresses = array_diff($this->addresses, $inUseAddresses->pluck('address')->toArray());
+        $availableAddresses = array_values(array_diff($this->addresses, $inUseAddresses->pluck('address')->toArray()));
 
         if (count($availableAddresses) <= 0) {
             throw new NoAddressAvailable('not enough addresses.');
         }
 
-        $address = $availableAddresses[mt_rand(0, count($availableAddresses) - 1)];
+        $address = $availableAddresses[array_rand($availableAddresses)];
         $beefyInvoice->associate($address, $invoiceId, $amount);
 
         return $address;
