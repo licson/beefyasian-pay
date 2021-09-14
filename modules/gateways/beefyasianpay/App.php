@@ -94,10 +94,10 @@ class App
             'timeout' => 15,
         ]);
 
-        $response = $http->get('/trc20/usdt/qrcode', [
+        $response = $http->get('/trc20/usdt/qrcode/', [
             'query' => [
                 'address' => $address,
-                'amount' => $amount,
+                'value' => $amount,
             ]
         ]);
 
@@ -165,7 +165,7 @@ class App
 
         $invoices->each(function ($invoice) {
             $transactions = $this->getTransactions($invoice['address'])->filter(function ($transaction) {
-                return !$transaction->confirmed;
+                return ! $transaction->confirmed;
             });
 
             $transactions->each(function ($transaction) use ($invoice) {
@@ -207,7 +207,7 @@ class App
             ],
         ]);
 
-        $response = json_decode($response->getBody(), true);
+        $response = json_decode($response->getBody()->getContents(), true);
 
         return new Collection($response['token_transfers']);
     }
