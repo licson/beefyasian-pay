@@ -42,7 +42,7 @@ class BeefyAsianPayInvoice extends Model
      * @var string[]
      */
     protected $casts = [
-        'expires_on' => 'date',
+        'expires_on' => 'datetime',
     ];
 
     /**
@@ -142,5 +142,22 @@ class BeefyAsianPayInvoice extends Model
             'is_released' => true,
         ])
         ->save();
+    }
+
+    /**
+     * Get beefyasian pay valid invoice by invoice id.
+     *
+     * @param   int  $invoiceId
+     *
+     * @return  \Illuminate\Database\Eloquent\Model|null
+     */
+    public function firstValidByInvoiceId(int $invoiceId)
+    {
+        return $this->newQuery()
+            ->where('invoice_id', $invoiceId)
+            ->where('expires_on', '>', Carbon::now())
+            ->where('is_released', 0)
+            ->latest('id')
+            ->first();
     }
 }

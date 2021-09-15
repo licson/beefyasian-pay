@@ -48,7 +48,7 @@ class App
      */
     public function __construct(string $addresses = '')
     {
-        $this->addresses = preg_split("/\r\n|\n|\r/", $addresses);
+        $this->addresses = array_filter(preg_split("/\r\n|\n|\r/", $addresses));
     }
 
     /**
@@ -94,7 +94,7 @@ class App
     {
         $http = new Client([
             'base_uri' => 'https://api.cryptapi.io',
-            'timeout' => 15,
+            'timeout' => 30,
         ]);
 
         $response = $http->get('/trc20/usdt/qrcode/', [
@@ -114,9 +114,59 @@ class App
      *
      * @param   array  $params
      *
+     * @return  mixed
+     */
+    public function render(array $params)
+    {
+        if ($_GET['act'] === 'invoice_status') {
+            $this->renderInvoiceStatusJson($params);
+        } else {
+            return $this->renderPaymentHTML($params);
+        }
+    }
+
+    /**
+     * Get then invoice status json.
+     *
+     * @param   array   $params
+     *
+     * @return  void
+     */
+    protected function renderInvoiceStatusJson(array $params)
+    {
+        $invoice = (new Invoice())->find($params['invoiceid']);
+        $beefyInvoice = (new BeefyAsianPayInvoice())->firstValidByInvoiceId($params['invoiceid']);
+        if (mb_strtolower($invoice['status']) === 'unpaid') {
+            if ($beefyInvoice['expires_on']->subMinutes(3)->gt(Carbon::now())) {
+                $beefyInvoice->renew();
+            }
+
+            $beefyInvoice = $beefyInvoice->fresh();
+        }
+
+        $json = json_encode([
+            'status' => $invoice['status'],
+            'valid_till' => $beefyInvoice['expires_on']->toDateTimeString()
+        ]);
+
+        header('Content-Type: application/json');
+        echo $json;
+
+        if (function_exists('fastcgi_finish_request')) {
+            fastcgi_finish_request();
+        } else {
+            exit();
+        }
+    }
+
+    /**
+     * Render pay with usdt html.
+     *
+     * @param   array   $params
+     *
      * @return  string
      */
-    public function render(array $params): string
+    protected function renderPaymentHTML(array $params): string
     {
         try {
             $beefyInvoice = new BeefyAsianPayInvoice();
@@ -124,18 +174,69 @@ class App
             $address = '';
             if ($validAddress = $beefyInvoice->validInvoice($params['invoiceid'])) {
                 $validAddress->renew();
-                $address = $validAddress->address;
+                $address = $validAddress->to_address;
             } else {
                 $address = $this->getAvailableAddress($params['invoiceid']);
             }
 
             $qrcode = $this->getQRCode($address, $params['amount']);
+            $validTill = Carbon::now()->addMinutes(BeefyAsianPayInvoice::RELEASE_TIMEOUT)->toDateTimeString();
 
             return <<<HTML
-                <p>TRC20: <small>$address</small></p>
-                <img src="data:image/png;base64,{$qrcode}" alt="" height="150">
+                <style>
+                    .usdt-addr {
+                        font-size: 12px;
+                        height: 40px;
+                        border: 1px solid #eee;
+                        border-radius: 4px;
+                        line-height: 40px;
+                        text-align: left;
+                        padding-left: 10px;
+                    }
+                    .copy-btn {
+                        display: inline-block;
+                        float: right;
+                        text-align: center;
+                        background: #4faf95;
+                        width: 55px;
+                        border: 1px solid #4faf95;
+                        height: 38px;
+                        color: #fff;
+                        border-radius: 0 4px 4px 0;
+                        cursor: pointer;
+                    }
+                </style>
+                <script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.8/dist/clipboard.min.js"></script>
+                <div style="width: 350px">
+                    <img src="data:image/png;base64,{$qrcode}" alt="" height="150">
+                    <p>Pay with USDT</p>
+                    <p>Valid till: <span id="valid-till">{$validTill}</span></p>
+                    <p class="usdt-addr">
+                        <span id="address">$address</span>
+                        <button class="copy-btn" data-clipboard-target="#address">Copy</button>
+                    </p>
+                </div>
+
+                <script>
+                    const clipboard = new ClipboardJS('.copy-btn')
+                    clipboard.on('success', () => {
+                        alert('Copied')
+                    })
+
+                    setInterval(() => {
+                        fetch(window.location.href + '&act=invoice_status')
+                            .then(r => r.json())
+                            .then(r => {
+                                if (r.status.toLowerCase() === 'paid') {
+                                    window.location.reload(true)
+                                } else {
+                                    document.querySelector('#valid-till').innerHTML = r.valid_till
+                                }
+                            })
+                    }, 1000);
+                </script>
                 HTML;
-            } catch (Throwable|Exception $e) {
+        } catch (Throwable | Exception $e) {
             return <<<HTML
                 <p>No available address. please try again later.</p>
             HTML;
@@ -214,7 +315,7 @@ class App
     {
         $http = new Client([
             'base_uri' => 'https://apiasia.tronscan.io:5566',
-            'timeout' => 10,
+            'timeout' => 30,
         ]);
 
         $response = $http->get('/api/token_trc20/transfers', [
@@ -222,7 +323,7 @@ class App
                 'direction' => 'in',
                 'count' => 8,
                 'tokens' => 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t',
-                'start_timestamp' => Carbon::now()->subMinutes(30)->getTimestamp(),
+                'start_timestamp' => Carbon::now()->subMinutes(BeefyAsianPayInvoice::RELEASE_TIMEOUT)->getTimestamp(),
                 'relatedAddress' => $address,
             ],
         ]);
