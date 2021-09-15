@@ -324,7 +324,7 @@ class App
                 'direction' => 'in',
                 'count' => 8,
                 'tokens' => 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t',
-                'start_timestamp' => $startDatetime->getTimestamp(),
+                'start_timestamp' => $startDatetime->getTimestamp() * 1000,
                 'relatedAddress' => $address,
             ],
         ]);
