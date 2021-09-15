@@ -270,7 +270,7 @@ class App
 
         $invoices->each(function ($invoice) {
             // Only confirmed transactions can be processed.
-            $transactions = $this->getTransactions($invoice['to_address'])->filter(function ($transaction) {
+            $transactions = $this->getTransactions($invoice['to_address'], $invoice['created_at'])->filter(function ($transaction) {
                 return !$transaction->confirmed;
             });
 
@@ -308,10 +308,11 @@ class App
      * Get TRC 20 address transactions.
      *
      * @param   string  $address
+     * @param   Carbon  $address
      *
      * @return  Collection
      */
-    protected function getTransactions(string $address): Collection
+    protected function getTransactions(string $address, Carbon $startDatetime): Collection
     {
         $http = new Client([
             'base_uri' => 'https://apiasia.tronscan.io:5566',
@@ -323,7 +324,7 @@ class App
                 'direction' => 'in',
                 'count' => 8,
                 'tokens' => 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t',
-                'start_timestamp' => Carbon::now()->subMinutes(BeefyAsianPayInvoice::RELEASE_TIMEOUT)->getTimestamp(),
+                'start_timestamp' => $startDatetime->getTimestamp(),
                 'relatedAddress' => $address,
             ],
         ]);
