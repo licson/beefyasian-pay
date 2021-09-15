@@ -137,7 +137,7 @@ class App
         $invoice = (new Invoice())->find($params['invoiceid']);
         $beefyInvoice = (new BeefyAsianPayInvoice())->firstValidByInvoiceId($params['invoiceid']);
         if (mb_strtolower($invoice['status']) === 'unpaid') {
-            if ($beefyInvoice['expires_on']->subMinutes(3)->gt(Carbon::now())) {
+            if ($beefyInvoice['expires_on']->subMinutes(3)->lt(Carbon::now())) {
                 $beefyInvoice->renew();
             }
 
@@ -271,7 +271,7 @@ class App
         $invoices->each(function ($invoice) {
             // Only confirmed transactions can be processed.
             $transactions = $this->getTransactions($invoice['to_address'])->filter(function ($transaction) {
-                return ! $transaction->confirmed;
+                return !$transaction->confirmed;
             });
 
             $transactions->each(function ($transaction) use ($invoice) {
