@@ -13,7 +13,7 @@ class BeefyAsianPayInvoice extends Model
      *
      * @var string
      */
-    protected $table = 'mod_beefy_asian_pay_invoices';
+    protected $table = 'mod_beefyasian_pay_invoices';
 
     /**
      * Release time (minutes).
@@ -28,13 +28,9 @@ class BeefyAsianPayInvoice extends Model
      * @var string[]
      */
     protected $fillable = [
-        'address',
         'invoice_id',
-        'amount',
-        'is_paid',
-        'paid_at',
-        'paid_address',
-        'paid_amount',
+        'to_address',
+        'from_address',
         'transaction_id',
         'expires_on',
         'is_released',
@@ -46,7 +42,6 @@ class BeefyAsianPayInvoice extends Model
      * @var string[]
      */
     protected $casts = [
-        'paid_at' => 'date',
         'expires_on' => 'date',
     ];
 
@@ -67,16 +62,14 @@ class BeefyAsianPayInvoice extends Model
      *
      * @param   string  $address
      * @param   int     $invoiceId
-     * @param   float   $amount
      *
      * @return  void
      */
-    public function associate(string $address, int $invoiceId, float $amount)
+    public function associate(string $address, int $invoiceId)
     {
         $this->newQuery()->create([
-            'address' => $address,
+            'to_address' => $address,
             'invoice_id' => $invoiceId,
-            'amount' => $amount,
             'expires_on' => Carbon::now()->addMinutes(self::RELEASE_TIMEOUT),
         ]);
     }
@@ -92,7 +85,6 @@ class BeefyAsianPayInvoice extends Model
     {
         return $this->newQuery()
             ->where('invoice_id', $invoiceId)
-            ->where('is_paid', 0)
             ->where('expires_on', '>', Carbon::now())
             ->first();
     }
@@ -129,7 +121,6 @@ class BeefyAsianPayInvoice extends Model
     public function getValidInvoices()
     {
         return $this->newQuery()
-            ->where('is_paid', 0)
             ->where('expires_on', '>', Carbon::now())
             ->where('is_released', 0)
             ->get();
@@ -138,36 +129,17 @@ class BeefyAsianPayInvoice extends Model
     /**
      * Mark inovice as paid.
      *
-     * @param  string  $paidAddress
-     * @param  float   $paidAmount
+     * @param  string  $fromAddress
      * @param  string  $transactionId
      *
      * @return  void
      */
-    public function markAsPaid(string $paidAddress, float $paidAmount, string $transactionId)
+    public function markAsPaid(string $fromAddress, string $transactionId)
     {
         $this->forceFill([
-            'is_paid' => true,
-            'paid_at' => Carbon::now(),
-            'paid_address' => $paidAddress,
-            'paid_amount' => $paidAmount,
+            'from_address' => $fromAddress,
             'transaction_id' => $transactionId,
             'is_released' => true,
-        ])
-        ->save();
-    }
-
-    /**
-     * Mark inovice as paid.
-     *
-     * @param  float  $paidAmount
-     *
-     * @return  void
-     */
-    public function updatePaidAmount(string $paidAmount)
-    {
-        $this->forceFill([
-            'paid_amount' => $paidAmount,
         ])
         ->save();
     }

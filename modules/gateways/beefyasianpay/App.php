@@ -4,7 +4,10 @@ namespace BeefyAsianPay;
 
 use BeefyAsianPay\Exceptions\NoAddressAvailable;
 use BeefyAsianPay\Models\BeefyAsianPayInvoice;
+use BeefyAsianPay\Models\Invoice;
+use BeefyAsianPay\Models\Transaction;
 use Carbon\Carbon;
+use Exception;
 use GuzzleHttp\Client;
 use Illuminate\Support\Collection;
 use Throwable;
@@ -123,17 +126,18 @@ class App
                 $validAddress->renew();
                 $address = $validAddress->address;
             } else {
-                $address = $this->getAvailableAddress($params['invoiceid'], $params['amount']);
+                $address = $this->getAvailableAddress($params['invoiceid']);
             }
 
             $qrcode = $this->getQRCode($address, $params['amount']);
+
             return <<<HTML
                 <p>TRC20: <small>$address</small></p>
                 <img src="data:image/png;base64,{$qrcode}" alt="" height="150">
-            HTML;
-        } catch (Throwable $e) {
+                HTML;
+            } catch (Throwable|Exception $e) {
             return <<<HTML
-                <p>No address. please try again later. {$e->getMessage()}</p>
+                <p>No available address. please try again later.</p>
             HTML;
         }
     }
@@ -164,19 +168,35 @@ class App
         $invoices = (new BeefyAsianPayInvoice())->getValidInvoices();
 
         $invoices->each(function ($invoice) {
-            $transactions = $this->getTransactions($invoice['address'])->filter(function ($transaction) {
+            // Only confirmed transactions can be processed.
+            $transactions = $this->getTransactions($invoice['to_address'])->filter(function ($transaction) {
                 return ! $transaction->confirmed;
             });
 
             $transactions->each(function ($transaction) use ($invoice) {
-                addInvoicePayment($invoice['invoice_id'], $transaction['transaction_id'], '', 0, 'BeefyAsianPay');
-                logTransaction('BeefyAsianPay', $transaction['transaction_id'], 'Successfully Paid');
+                $whmcsTransaction = (new Transaction())->firstByTransId($transaction['transaction_id']);
+                $whmcsInvoice = Invoice::find($invoice['invoice_id']);
+                // If current invoice has been paid ignore it.
+                if ($whmcsTransaction || mb_strtolower($whmcsInvoice['status']) === 'paid') {
+                    return;
+                }
 
-                $actualAmount = $transaction['quant'] / 1000000 + $invoice['paid_amount'];
-                if ($actualAmount >= $invoice['amount']) {
-                    $invoice->markAsPaid($transaction['from_address'], $actualAmount, $transaction['transaction_id']);
+                $actualAmount = $transaction['quant'] / 1000000;
+                AddInvoicePayment(
+                    $invoice['invoice_id'], // Invoice id
+                    $transaction['transaction_id'], // Transaction id
+                    $actualAmount, // Paid amount
+                    0, // Transaction fee
+                    'BeefyAsianPay', // Gateway
+                );
+
+                logTransaction('BeefyAsianPay', $transaction, 'Successfully Paid');
+
+                $whmcsInvoice = $whmcsInvoice->fresh();
+                // If the invoice has been paid in full, release the address, otherwise renew it.
+                if (mb_strtolower($whmcsInvoice['status']) === 'paid') {
+                    $invoice->markAsPaid($transaction['from_address'], $transaction['transaction_id']);
                 } else {
-                    $invoice->updatePaidAmount($actualAmount);
                     $invoice->renew();
                 }
             });
@@ -200,7 +220,7 @@ class App
         $response = $http->get('/api/token_trc20/transfers', [
             'query' => [
                 'direction' => 'in',
-                'count' => true,
+                'count' => 8,
                 'tokens' => 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t',
                 'start_timestamp' => Carbon::now()->subMinutes(30)->getTimestamp(),
                 'relatedAddress' => $address,
@@ -216,25 +236,24 @@ class App
      * Get an available usdt address.
      *
      * @param   int     $invoiceId
-     * @param   float   $amount
      *
      * @return  string
      * @throws  NoAddressAvailable
      */
-    protected function getAvailableAddress(int $invoiceId, float $amount): string
+    protected function getAvailableAddress(int $invoiceId): string
     {
         $beefyInvoice = new BeefyAsianPayInvoice();
 
-        $inUseAddresses = $beefyInvoice->inUse()->get(['address']);
+        $inUseAddresses = $beefyInvoice->inUse()->get(['to_address']);
 
-        $availableAddresses = array_values(array_diff($this->addresses, $inUseAddresses->pluck('address')->toArray()));
+        $availableAddresses = array_values(array_diff($this->addresses, $inUseAddresses->pluck('to_address')->toArray()));
 
         if (count($availableAddresses) <= 0) {
             throw new NoAddressAvailable('not enough addresses.');
         }
 
         $address = $availableAddresses[array_rand($availableAddresses)];
-        $beefyInvoice->associate($address, $invoiceId, $amount);
+        $beefyInvoice->associate($address, $invoiceId);
 
         return $address;
     }
