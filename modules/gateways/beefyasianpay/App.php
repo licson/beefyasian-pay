@@ -288,7 +288,7 @@ class App
                     $transaction['transaction_id'], // Transaction id
                     $actualAmount, // Paid amount
                     0, // Transaction fee
-                    'BeefyAsianPay', // Gateway
+                    'beefyasianpay', // Gateway
                 );
 
                 logTransaction('BeefyAsianPay', $transaction, 'Successfully Paid');
