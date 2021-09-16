@@ -7,7 +7,6 @@ use BeefyAsianPay\Models\BeefyAsianPayInvoice;
 use BeefyAsianPay\Models\Invoice;
 use BeefyAsianPay\Models\Transaction;
 use Carbon\Carbon;
-use Exception;
 use GuzzleHttp\Client;
 use Illuminate\Support\Collection;
 use Smarty;
@@ -120,10 +119,37 @@ class App
      */
     public function render(array $params)
     {
-        if ($_GET['act'] === 'invoice_status') {
-            $this->renderInvoiceStatusJson($params);
-        } else {
-            return $this->renderPaymentHTML($params);
+        switch ($_GET['act']) {
+            case 'invoice_status':
+                $this->renderInvoiceStatusJson($params);
+            case 'create':
+                $this->createBeefyAsianPayInvoice($params);
+            default:
+                return $this->renderPaymentHTML($params);
+        }
+    }
+
+    /**
+     * Create beefy asian pay invoice.
+     *
+     * @param   array  $params
+     *
+     * @return  void
+     */
+    protected function createBeefyAsianPayInvoice(array $params)
+    {
+        try {
+            $address = $this->getAvailableAddress($params['invoiceid']);
+
+            $this->json([
+                'status' => true,
+                'address' => $address,
+            ]);
+        } catch (Throwable $e) {
+            $this->json([
+                'status' => false,
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 
@@ -137,10 +163,14 @@ class App
     protected function renderInvoiceStatusJson(array $params)
     {
         $beefyInvoice = (new BeefyAsianPayInvoice())->firstValidByInvoiceId($params['invoiceid']);
-        $this->checkTransaction($beefyInvoice);
-        $beefyInvoice = $beefyInvoice->fresh();
+        $invoice = (new Invoice())->withCount('transactions')->find($params['invoiceid']);
 
-        $invoice = (new Invoice())->find($params['invoiceid']);
+        $this->checkTransaction($beefyInvoice);
+
+        $beefyInvoice = $beefyInvoice->refresh();
+        $freshInvoice = (new Invoice())->withCount('transactions')->find($params['invoiceid']);
+
+        $isForceRefresh = $invoice['transactions_count'] !== $freshInvoice['transactions_count'] ? true : false;
         if (mb_strtolower($invoice['status']) === 'unpaid') {
             if ($beefyInvoice['expires_on']->subMinutes(3)->lt(Carbon::now())) {
                 $beefyInvoice->renew();
@@ -149,11 +179,25 @@ class App
             $beefyInvoice = $beefyInvoice->fresh();
         }
 
-        $json = json_encode([
+        $json = [
             'status' => $invoice['status'],
-            'valid_till' => $beefyInvoice['expires_on']->toDateTimeString()
-        ]);
+            'valid_till' => $beefyInvoice['expires_on']->toDateTimeString(),
+            'is_force_refresh' => $isForceRefresh,
+        ];
 
+        $this->json($json);
+    }
+
+    /**
+     * Responed with JSON.
+     *
+     * @param   array  $json
+     *
+     * @return  void
+     */
+    protected function json(array $json)
+    {
+        $json = json_encode($json);
         header('Content-Type: application/json');
         echo $json;
 
@@ -173,25 +217,18 @@ class App
      */
     protected function renderPaymentHTML(array $params): string
     {
-        try {
-            $beefyInvoice = new BeefyAsianPayInvoice();
+        $beefyInvoice = new BeefyAsianPayInvoice();
 
-            $address = '';
-            if ($validAddress = $beefyInvoice->validInvoice($params['invoiceid'])) {
-                $validAddress->renew();
-                $address = $validAddress['to_address'];
-            } else {
-                $address = $this->getAvailableAddress($params['invoiceid']);
-            }
-
+        if ($validAddress = $beefyInvoice->validInvoice($params['invoiceid'])) {
+            $validAddress->renew();
             $validTill = Carbon::now()->addMinutes(BeefyAsianPayInvoice::RELEASE_TIMEOUT)->toDateTimeString();
 
             return $this->view('payment.tpl', [
-                'address' => $address,
+                'address' => $validAddress['to_address'],
                 'validTill' => $validTill,
             ]);
-        } catch (Throwable | Exception $e) {
-            return $this->view('error.tpl');
+        } else {
+            return $this->view('pay_with_usdt.tpl');
         }
     }
 
@@ -316,7 +353,7 @@ class App
         $availableAddresses = array_values(array_diff($this->addresses, $inUseAddresses->pluck('to_address')->toArray()));
 
         if (count($availableAddresses) <= 0) {
-            throw new NoAddressAvailable('not enough addresses.');
+            throw new NoAddressAvailable('no available address please try again later.');
         }
 
         $address = $availableAddresses[array_rand($availableAddresses)];

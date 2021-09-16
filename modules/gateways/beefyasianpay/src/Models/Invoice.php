@@ -12,4 +12,15 @@ class Invoice extends Model
      * @var string
      */
     protected $table = 'tblinvoices';
+
+
+    /**
+     * Invoice transactions.
+     *
+     * @return  \Illuminate\Database\Eloquent\Relations\HasMany
+     */
+    public function transactions()
+    {
+        return $this->hasMany(Transaction::class, 'invoiceid');
+    }
 }
