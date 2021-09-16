@@ -178,6 +178,7 @@ class App
                         width: 55px;
                         border: 1px solid #4faf95;
                         height: 38px;
+                        line-height: 36px;
                         color: #fff;
                         border-radius: 0 4px 4px 0;
                         cursor: pointer;
