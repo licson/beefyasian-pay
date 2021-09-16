@@ -107,8 +107,11 @@ class App
      */
     protected function renderInvoiceStatusJson(array $params)
     {
-        $invoice = (new Invoice())->find($params['invoiceid']);
         $beefyInvoice = (new BeefyAsianPayInvoice())->firstValidByInvoiceId($params['invoiceid']);
+        $this->checkTransaction($beefyInvoice);
+        $beefyInvoice = $beefyInvoice->fresh();
+
+        $invoice = (new Invoice())->find($params['invoiceid']);
         if (mb_strtolower($invoice['status']) === 'unpaid') {
             if ($beefyInvoice['expires_on']->subMinutes(3)->lt(Carbon::now())) {
                 $beefyInvoice->renew();
@@ -183,23 +186,39 @@ class App
                         border-radius: 0 4px 4px 0;
                         cursor: pointer;
                     }
+                    .copied {
+                        display: block;
+                        position: absolute;
+                        right: 0;
+                        background: #272727;
+                        height: 30px;
+                        width: 60px;
+                        color: #ffffff;
+                        text-align: center;
+                        line-height: 30px;
+                        border-radius: 4px;
+                    }
                 </style>
                 <script src="https://cdn.jsdelivr.net/gh/davidshimjs/qrcodejs@master/qrcode.min.js"></script>
                 <script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.8/dist/clipboard.min.js"></script>
                 <div style="width: 350px">
                     <div id="qrcode"></div>
                     <p>Pay with USDT</p>
-                    <p>Valid till: <span id="valid-till">{$validTill}</span></p>
+                    <p>Valid till <span id="valid-till">{$validTill}</span></p>
                     <p class="usdt-addr">
                         <span id="address">$address</span>
                         <button class="copy-btn" data-clipboard-target="#address">Copy</button>
+                        <span class="copied" style="display: none;">Copied!</span>
                     </p>
                 </div>
 
                 <script>
                     const clipboard = new ClipboardJS('.copy-btn')
                     clipboard.on('success', () => {
-                        alert('Copied')
+                        $('.copied').show()
+                        setTimeout(() => {
+                            $('.copied').hide()
+                        }, 500);
                     })
 
                     new QRCode(document.querySelector('#qrcode'), {
@@ -218,7 +237,7 @@ class App
                                     document.querySelector('#valid-till').innerHTML = r.valid_till
                                 }
                             })
-                    }, 1000);
+                    }, 15000);
                 </script>
                 HTML;
         } catch (Throwable | Exception $e) {
@@ -254,39 +273,51 @@ class App
         $invoices = (new BeefyAsianPayInvoice())->getValidInvoices();
 
         $invoices->each(function ($invoice) {
-            // Only confirmed transactions can be processed.
-            $transactions = $this->getTransactions($invoice['to_address'], $invoice['created_at'])
-                ->filter(function ($transaction) {
-                    return ! $transaction->confirmed;
-                });
+            $this->checkTransaction($invoice);
+        });
+    }
 
-            $transactions->each(function ($transaction) use ($invoice) {
-                $whmcsTransaction = (new Transaction())->firstByTransId($transaction['transaction_id']);
-                $whmcsInvoice = Invoice::find($invoice['invoice_id']);
-                // If current invoice has been paid ignore it.
-                if ($whmcsTransaction || mb_strtolower($whmcsInvoice['status']) === 'paid') {
-                    return;
-                }
-
-                $actualAmount = $transaction['quant'] / 1000000;
-                AddInvoicePayment(
-                    $invoice['invoice_id'], // Invoice id
-                    $transaction['transaction_id'], // Transaction id
-                    $actualAmount, // Paid amount
-                    0, // Transaction fee
-                    'beefyasianpay' // Gateway
-                );
-
-                logTransaction('BeefyAsianPay', $transaction, 'Successfully Paid');
-
-                $whmcsInvoice = $whmcsInvoice->fresh();
-                // If the invoice has been paid in full, release the address, otherwise renew it.
-                if (mb_strtolower($whmcsInvoice['status']) === 'paid') {
-                    $invoice->markAsPaid($transaction['from_address'], $transaction['transaction_id']);
-                } else {
-                    $invoice->renew();
-                }
+    /**
+     * Check USDT Transaction.
+     *
+     * @param   BeefyAsianPayInvoice  $invoice
+     *
+     * @return  void
+     */
+    protected function checkTransaction(BeefyAsianPayInvoice $invoice)
+    {
+        // Only confirmed transactions can be processed.
+        $transactions = $this->getTransactions($invoice['to_address'], $invoice['created_at'])
+            ->filter(function ($transaction) {
+                return !$transaction->confirmed;
             });
+
+        $transactions->each(function ($transaction) use ($invoice) {
+            $whmcsTransaction = (new Transaction())->firstByTransId($transaction['transaction_id']);
+            $whmcsInvoice = Invoice::find($invoice['invoice_id']);
+            // If current invoice has been paid ignore it.
+            if ($whmcsTransaction || mb_strtolower($whmcsInvoice['status']) === 'paid') {
+                return;
+            }
+
+            $actualAmount = $transaction['quant'] / 1000000;
+            AddInvoicePayment(
+                $invoice['invoice_id'], // Invoice id
+                $transaction['transaction_id'], // Transaction id
+                $actualAmount, // Paid amount
+                0, // Transaction fee
+                'beefyasianpay' // Gateway
+            );
+
+            logTransaction('BeefyAsianPay', $transaction, 'Successfully Paid');
+
+            $whmcsInvoice = $whmcsInvoice->fresh();
+            // If the invoice has been paid in full, release the address, otherwise renew it.
+            if (mb_strtolower($whmcsInvoice['status']) === 'paid') {
+                $invoice->markAsPaid($transaction['from_address'], $transaction['transaction_id']);
+            } else {
+                $invoice->renew();
+            }
         });
     }
 
