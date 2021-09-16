@@ -256,8 +256,8 @@ class App
         $invoices->each(function ($invoice) {
             // Only confirmed transactions can be processed.
             $transactions = $this->getTransactions($invoice['to_address'], $invoice['created_at'])
-                ->filter(function ($transaction) use ($invoice) {
-                    return !$transaction->confirmed;
+                ->filter(function ($transaction) {
+                    return ! $transaction->confirmed;
                 });
 
             $transactions->each(function ($transaction) use ($invoice) {
@@ -274,7 +274,7 @@ class App
                     $transaction['transaction_id'], // Transaction id
                     $actualAmount, // Paid amount
                     0, // Transaction fee
-                    'beefyasianpay', // Gateway
+                    'beefyasianpay' // Gateway
                 );
 
                 logTransaction('BeefyAsianPay', $transaction, 'Successfully Paid');
