@@ -176,7 +176,7 @@ class App
                 $beefyInvoice->renew();
             }
 
-            $beefyInvoice = $beefyInvoice->fresh();
+            $beefyInvoice = $beefyInvoice->refresh();
         }
 
         $json = [
