@@ -83,33 +83,6 @@ class App
     }
 
     /**
-     * Get trc20 transfer QRCode.
-     *
-     * @param   string  $address
-     * @param   float   $amount
-     *
-     * @return  string
-     */
-    protected function getQRCode(string $address, float $amount): string
-    {
-        $http = new Client([
-            'base_uri' => 'https://api.cryptapi.io',
-            'timeout' => 30,
-        ]);
-
-        $response = $http->get('/trc20/usdt/qrcode/', [
-            'query' => [
-                'address' => $address,
-                'value' => $amount,
-            ]
-        ]);
-
-        $response = json_decode($response->getBody()->getContents(), true);
-
-        return $response['qr_code'];
-    }
-
-    /**
      * Render payment html.
      *
      * @param   array  $params
@@ -179,11 +152,15 @@ class App
                 $address = $this->getAvailableAddress($params['invoiceid']);
             }
 
-            $qrcode = $this->getQRCode($address, $params['amount']);
             $validTill = Carbon::now()->addMinutes(BeefyAsianPayInvoice::RELEASE_TIMEOUT)->toDateTimeString();
 
             return <<<HTML
                 <style>
+                    #qrcode {
+                        display: flex;
+                        width: 100%;
+                        justify-content: center;
+                    }
                     .usdt-addr {
                         font-size: 12px;
                         height: 40px;
@@ -206,9 +183,10 @@ class App
                         cursor: pointer;
                     }
                 </style>
+                <script src="https://cdn.jsdelivr.net/gh/davidshimjs/qrcodejs@master/qrcode.min.js"></script>
                 <script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.8/dist/clipboard.min.js"></script>
                 <div style="width: 350px">
-                    <img src="data:image/png;base64,{$qrcode}" alt="" height="150">
+                    <div id="qrcode"></div>
                     <p>Pay with USDT</p>
                     <p>Valid till: <span id="valid-till">{$validTill}</span></p>
                     <p class="usdt-addr">
@@ -221,6 +199,12 @@ class App
                     const clipboard = new ClipboardJS('.copy-btn')
                     clipboard.on('success', () => {
                         alert('Copied')
+                    })
+
+                    new QRCode(document.querySelector('#qrcode'), {
+                        text: "{$address}",
+                        width: 128,
+                        height: 128,
                     })
 
                     setInterval(() => {
@@ -270,9 +254,10 @@ class App
 
         $invoices->each(function ($invoice) {
             // Only confirmed transactions can be processed.
-            $transactions = $this->getTransactions($invoice['to_address'], $invoice['created_at'])->filter(function ($transaction) {
-                return !$transaction->confirmed;
-            });
+            $transactions = $this->getTransactions($invoice['to_address'], $invoice['created_at'])
+                ->filter(function ($transaction) use ($invoice) {
+                    return !$transaction->confirmed;
+                });
 
             $transactions->each(function ($transaction) use ($invoice) {
                 $whmcsTransaction = (new Transaction())->firstByTransId($transaction['transaction_id']);
