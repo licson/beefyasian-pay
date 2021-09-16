@@ -34,8 +34,7 @@
         <input id="address" class="address" value="{$address}"></span>
 
         <div class="copy-botton">
-            <button id="clipboard-btn" class="btn btn-primary" type="button" data-clipboard-target="#address">Copy</button>
-            <span class="copied" style="display: none;">Copied!</span>
+            <button id="clipboard-btn" class="btn btn-primary" type="button" data-clipboard-target="#address">COPY</button>
         </div>
     </p>
 </div>
@@ -43,9 +42,9 @@
 <script>
     const clipboard = new ClipboardJS('#clipboard-btn')
     clipboard.on('success', () => {
-        $('.copied').show(100)
+        $('#clipboard-btn').text('COPIED')
         setTimeout(() => {
-            $('.copied').hide()
+            $('#clipboard-btn').text('COPY')
         }, 500);
     })
 
