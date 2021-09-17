@@ -54,11 +54,14 @@
         height: 200,
     })
 
+    window.localStorage.removeItem('whmcs_usdt_invoice')
     setInterval(() => {
         fetch(window.location.href + '&act=invoice_status')
             .then(r => r.json())
             .then(r => {
-                if (r.status.toLowerCase() === 'paid' || r.is_force_refresh) {
+                const previous = JSON.parse(window.localStorage.getItem(`whmcs_usdt_invoice`) || '{}')
+                window.localStorage.setItem('whmcs_usdt_invoice', JSON.stringify(r))
+                if (r.status.toLowerCase() === 'paid' || (previous.amountin !== undefined && previous?.amountin !== r.amountin)) {
                     window.location.reload(true)
                 } else {
                     document.querySelector('#valid-till').innerHTML = r.valid_till

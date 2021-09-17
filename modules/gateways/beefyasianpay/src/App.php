@@ -180,14 +180,10 @@ class App
     protected function renderInvoiceStatusJson(array $params)
     {
         $beefyInvoice = (new BeefyAsianPayInvoice())->firstValidByInvoiceId($params['invoiceid']);
-        $invoice = (new Invoice())->withCount('transactions')->find($params['invoiceid']);
-
+        $invoice = (new Invoice())->with('transactions')->find($params['invoiceid']);
         $this->checkTransaction($beefyInvoice);
-
         $beefyInvoice = $beefyInvoice->refresh();
-        $freshInvoice = (new Invoice())->withCount('transactions')->find($params['invoiceid']);
 
-        $isForceRefresh = $invoice['transactions_count'] !== $freshInvoice['transactions_count'] ? true : false;
         if (mb_strtolower($invoice['status']) === 'unpaid') {
             if ($beefyInvoice['expires_on']->subMinutes(3)->lt(Carbon::now())) {
                 $beefyInvoice->renew($this->timeout);
@@ -198,8 +194,8 @@ class App
 
         $json = [
             'status' => $invoice['status'],
+            'amountin' => $invoice['transactions']->sum('amountin'),
             'valid_till' => $beefyInvoice['expires_on']->toDateTimeString(),
-            'is_force_refresh' => $isForceRefresh,
         ];
 
         $this->json($json);
