@@ -237,7 +237,7 @@ class App
         $beefyInvoice = new BeefyAsianPayInvoice();
 
         if ($validAddress = $beefyInvoice->validInvoice($params['invoiceid'])) {
-            $validAddress->renew();
+            $validAddress->renew($this->timeout);
             $validTill = Carbon::now()->addMinutes($this->timeout)->toDateTimeString();
 
             return $this->view('payment.tpl', [
