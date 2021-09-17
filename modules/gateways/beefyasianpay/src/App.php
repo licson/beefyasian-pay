@@ -37,6 +37,12 @@ class App
             'Rows' => '20',
             'Cols' => '30',
         ],
+        'timeout' => [
+            'FriendlyName' => 'Timeout',
+            'Type' => 'text',
+            'Value' => 30,
+            'Description' => 'Minutes'
+        ]
     ];
 
     /**
@@ -53,9 +59,20 @@ class App
      *
      * @return  void
      */
-    public function __construct(string $addresses = '')
+    public function __construct(array $params = [])
     {
-        $this->addresses = array_filter(preg_split("/\r\n|\n|\r/", $addresses));
+        if (!function_exists('getGatewayVariables')) {
+            require_once dirname(__DIR__, 3) . DIRECTORY_SEPARATOR . 'init.php';
+            require_once dirname(__DIR__, 3) . DIRECTORY_SEPARATOR . 'includes/gatewayfunctions.php';
+            require_once dirname(__DIR__, 3) . DIRECTORY_SEPARATOR . 'includes/invoicefunctions.php';
+        } else {
+            if (empty($params)) {
+                $params = getGatewayVariables('beefyasianpay');
+            }
+        }
+
+        $this->timeout = $params['timeout'];
+        $this->addresses = array_filter(preg_split("/\r\n|\n|\r/", $params['addresses']));
 
         $this->smarty = new Smarty();
         $this->smarty->setTemplateDir(BEEFYASIAN_PAY_ROOT . DIRECTORY_SEPARATOR . 'templates');
@@ -173,7 +190,7 @@ class App
         $isForceRefresh = $invoice['transactions_count'] !== $freshInvoice['transactions_count'] ? true : false;
         if (mb_strtolower($invoice['status']) === 'unpaid') {
             if ($beefyInvoice['expires_on']->subMinutes(3)->lt(Carbon::now())) {
-                $beefyInvoice->renew();
+                $beefyInvoice->renew($this->timeout);
             }
 
             $beefyInvoice = $beefyInvoice->refresh();
@@ -221,7 +238,7 @@ class App
 
         if ($validAddress = $beefyInvoice->validInvoice($params['invoiceid'])) {
             $validAddress->renew();
-            $validTill = Carbon::now()->addMinutes(BeefyAsianPayInvoice::RELEASE_TIMEOUT)->toDateTimeString();
+            $validTill = Carbon::now()->addMinutes($this->timeout)->toDateTimeString();
 
             return $this->view('payment.tpl', [
                 'address' => $validAddress['to_address'],
@@ -239,10 +256,6 @@ class App
      */
     public function cron()
     {
-        require_once dirname(__DIR__, 3) . DIRECTORY_SEPARATOR . 'init.php';
-        require_once dirname(__DIR__, 3) . DIRECTORY_SEPARATOR . 'includes/gatewayfunctions.php';
-        require_once dirname(__DIR__, 3) . DIRECTORY_SEPARATOR . 'includes/invoicefunctions.php';
-
         $this->checkPaidInvoice();
 
         (new BeefyAsianPayInvoice())->markExpiredInvoiceAsReleased();
@@ -301,7 +314,7 @@ class App
             if (mb_strtolower($whmcsInvoice['status']) === 'paid') {
                 $invoice->markAsPaid($transaction['from_address'], $transaction['transaction_id']);
             } else {
-                $invoice->renew();
+                $invoice->renew($this->timeout);
             }
         });
     }
@@ -357,7 +370,7 @@ class App
         }
 
         $address = $availableAddresses[array_rand($availableAddresses)];
-        $beefyInvoice->associate($address, $invoiceId);
+        $beefyInvoice->associate($address, $invoiceId, $this->timeout);
 
         return $address;
     }

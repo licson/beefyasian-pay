@@ -60,5 +60,5 @@ function beefyasianpay_config()
  */
 function beefyasianpay_link(array $params)
 {
-    return (new App($params['addresses']))->render($params);
+    return (new App($params))->render($params);
 }

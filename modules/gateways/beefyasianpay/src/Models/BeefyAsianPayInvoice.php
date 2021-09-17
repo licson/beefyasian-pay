@@ -16,13 +16,6 @@ class BeefyAsianPayInvoice extends Model
     protected $table = 'mod_beefyasian_pay_invoices';
 
     /**
-     * Release time (minutes).
-     *
-     * @var int
-     */
-    public const RELEASE_TIMEOUT = 30;
-
-    /**
      * The attributes that are mass assignable.
      *
      * @var string[]
@@ -62,15 +55,16 @@ class BeefyAsianPayInvoice extends Model
      *
      * @param   string  $address
      * @param   int     $invoiceId
+     * @param   int     $timeout
      *
      * @return  void
      */
-    public function associate(string $address, int $invoiceId)
+    public function associate(string $address, int $invoiceId, int $timeout = 30)
     {
         $this->newQuery()->create([
             'to_address' => $address,
             'invoice_id' => $invoiceId,
-            'expires_on' => Carbon::now()->addMinutes(self::RELEASE_TIMEOUT),
+            'expires_on' => Carbon::now()->addMinutes($timeout),
         ]);
     }
 
@@ -92,11 +86,13 @@ class BeefyAsianPayInvoice extends Model
     /**
      * Update the expires date.
      *
+     * @param   int  $timeout
+     *
      * @return  bool
      */
-    public function renew(): bool
+    public function renew(int $timeout = 30): bool
     {
-        return $this->forceFill(['expires_on' => Carbon::now()->addMinutes(self::RELEASE_TIMEOUT)])->save();
+        return $this->forceFill(['expires_on' => Carbon::now()->addMinutes($timeout)])->save();
     }
 
     /**
