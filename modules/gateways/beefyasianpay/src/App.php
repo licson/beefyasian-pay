@@ -305,7 +305,7 @@ class App
 
             logTransaction('BeefyAsianPay', $transaction, 'Successfully Paid');
 
-            $whmcsInvoice = $whmcsInvoice->fresh();
+            $whmcsInvoice = $whmcsInvoice->refresh();
             // If the invoice has been paid in full, release the address, otherwise renew it.
             if (mb_strtolower($whmcsInvoice['status']) === 'paid') {
                 $invoice->markAsPaid($transaction['from_address'], $transaction['transaction_id']);
