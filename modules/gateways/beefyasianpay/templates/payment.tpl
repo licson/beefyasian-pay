@@ -67,5 +67,6 @@
                     document.querySelector('#valid-till').innerHTML = r.valid_till
                 }
             })
+            .catch(e => window.location.reload(true))
     }, 15000);
 </script>
