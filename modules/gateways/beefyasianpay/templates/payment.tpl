@@ -54,19 +54,36 @@
         height: 200,
     })
 
+    $('#clipboard-btn').hover(() => {
+        $('#clipboard-btn').text('COPY')
+    })
+
     window.localStorage.removeItem('whmcs_usdt_invoice')
     setInterval(() => {
+        $('#clipboard-btn').text('UPDATING')
         fetch(window.location.href + '&act=invoice_status')
             .then(r => r.json())
             .then(r => {
                 const previous = JSON.parse(window.localStorage.getItem(`whmcs_usdt_invoice`) || '{}')
                 window.localStorage.setItem('whmcs_usdt_invoice', JSON.stringify(r))
                 if (r.status.toLowerCase() === 'paid' || (previous.amountin !== undefined && previous?.amountin !== r.amountin)) {
-                    window.location.reload(true)
+                    $('#clipboard-btn').text('ADDING PMT')
+
+                    setTimeout(() => {
+                        window.location.reload(true)
+                    }, 1000);
                 } else {
                     document.querySelector('#valid-till').innerHTML = r.valid_till
                 }
+
+                setTimeout(() => {
+                    $('#clipboard-btn').text('UPDATED')
+                    setTimeout(() => {
+                        $('#clipboard-btn').text('COPY')
+                    }, 1000)
+                }, 1000)
             })
             .catch(e => window.location.reload(true))
+
     }, 15000);
 </script>
