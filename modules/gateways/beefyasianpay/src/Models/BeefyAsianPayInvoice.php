@@ -104,6 +104,7 @@ class BeefyAsianPayInvoice extends Model
     {
         $this->newQuery()
             ->where('expires_on', '<=', Carbon::now())
+            ->where('is_released', false)
             ->update([
                 'is_released' => true,
             ]);
