@@ -156,6 +156,22 @@ class App
     protected function createBeefyAsianPayInvoice(array $params)
     {
         try {
+            $invoice = (new Invoice())->find($params['invoiceid']);
+
+            if (mb_strtolower($invoice['status']) === 'paid') {
+                $this->json([
+                    'status' => false,
+                    'error' => 'The invoice has been paid in full.'
+                ]);
+            }
+
+            if ((new BeefyAsianPayInvoice())->firstValidByInvoiceId($params['invoiceid'])) {
+                $this->json([
+                    'status' => false,
+                    'error' => 'The invoice has been associated with a USDT address please refresh the invoice page.'
+                ]);
+            }
+
             $address = $this->getAvailableAddress($params['invoiceid']);
 
             $this->json([

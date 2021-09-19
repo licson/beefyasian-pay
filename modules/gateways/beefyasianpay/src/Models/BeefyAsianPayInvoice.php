@@ -80,6 +80,7 @@ class BeefyAsianPayInvoice extends Model
         return $this->newQuery()
             ->where('invoice_id', $invoiceId)
             ->where('expires_on', '>', Carbon::now())
+            ->where('is_released', false)
             ->first();
     }
 
