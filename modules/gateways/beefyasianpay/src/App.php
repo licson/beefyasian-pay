@@ -9,6 +9,7 @@ use BeefyAsianPay\Models\Transaction;
 use Carbon\Carbon;
 use GuzzleHttp\Client;
 use Illuminate\Support\Collection;
+use RuntimeException;
 use Smarty;
 use Throwable;
 
@@ -162,13 +163,6 @@ class App
                 $this->json([
                     'status' => false,
                     'error' => 'The invoice has been paid in full.'
-                ]);
-            }
-
-            if ((new BeefyAsianPayInvoice())->firstValidByInvoiceId($params['invoiceid'])) {
-                $this->json([
-                    'status' => false,
-                    'error' => 'The invoice has been associated with a USDT address please refresh the invoice page.'
                 ]);
             }
 
@@ -372,6 +366,10 @@ class App
     protected function getAvailableAddress(int $invoiceId): string
     {
         $beefyInvoice = new BeefyAsianPayInvoice();
+
+        if ($beefyInvoice->firstValidByInvoiceId($invoiceId)) {
+            throw new RuntimeException("The invoice has been associated with a USDT address please refresh the invoice page.");
+        }
 
         $inUseAddresses = $beefyInvoice->inUse()->get(['to_address']);
 
