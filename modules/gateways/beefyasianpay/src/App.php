@@ -190,25 +190,32 @@ class App
     protected function renderInvoiceStatusJson(array $params)
     {
         $beefyInvoice = (new BeefyAsianPayInvoice())->firstValidByInvoiceId($params['invoiceid']);
-        $invoice = (new Invoice())->with('transactions')->find($params['invoiceid']);
-        $this->checkTransaction($beefyInvoice);
-        $beefyInvoice = $beefyInvoice->refresh();
+        if ($beefyInvoice) {
+            $invoice = (new Invoice())->with('transactions')->find($params['invoiceid']);
+            $this->checkTransaction($beefyInvoice);
+            $beefyInvoice = $beefyInvoice->refresh();
 
-        if (mb_strtolower($invoice['status']) === 'unpaid') {
-            if ($beefyInvoice['expires_on']->subMinutes(3)->lt(Carbon::now())) {
-                $beefyInvoice->renew($this->timeout);
+            if (mb_strtolower($invoice['status']) === 'unpaid') {
+                if ($beefyInvoice['expires_on']->subMinutes(3)->lt(Carbon::now())) {
+                    $beefyInvoice->renew($this->timeout);
+                }
+
+                $beefyInvoice = $beefyInvoice->refresh();
             }
 
-            $beefyInvoice = $beefyInvoice->refresh();
+            $json = [
+                'status' => $invoice['status'],
+                'amountin' => $invoice['transactions']->sum('amountin'),
+                'valid_till' => $beefyInvoice['expires_on']->toDateTimeString(),
+            ];
+
+            $this->json($json);
         }
 
-        $json = [
-            'status' => $invoice['status'],
-            'amountin' => $invoice['transactions']->sum('amountin'),
-            'valid_till' => $beefyInvoice['expires_on']->toDateTimeString(),
-        ];
-
-        $this->json($json);
+        $this->json([
+            'status' => false,
+            'error' => 'invoice does not exists',
+        ]);
     }
 
     /**
@@ -300,7 +307,11 @@ class App
             $whmcsTransaction = (new Transaction())->firstByTransId($transaction['transaction_id']);
             $whmcsInvoice = Invoice::find($invoice['invoice_id']);
             // If current invoice has been paid ignore it.
-            if ($whmcsTransaction || mb_strtolower($whmcsInvoice['status']) === 'paid') {
+            if ($whmcsTransaction) {
+                return;
+            }
+
+            if (mb_strtolower($whmcsInvoice['status']) === 'paid') {
                 return;
             }
 
@@ -361,7 +372,9 @@ class App
      * @param   int     $invoiceId
      *
      * @return  string
+     *
      * @throws  NoAddressAvailable
+     * @throws  RuntimeException
      */
     protected function getAvailableAddress(int $invoiceId): string
     {

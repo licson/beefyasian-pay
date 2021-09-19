@@ -72,6 +72,8 @@
                     setTimeout(() => {
                         window.location.reload(true)
                     }, 1000);
+                } else if (!r.status) {
+                    alert(r.error)
                 } else {
                     document.querySelector('#valid-till').innerHTML = r.valid_till
                 }
