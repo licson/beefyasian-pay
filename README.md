@@ -17,7 +17,7 @@ https://github.com/damonto/beefyasian-pay/archive/refs/heads/main.zip
 
 下载过后请按照项目目录结构将文件分别复制到 `includes/hooks` 和 `modules/gateways` 目录。
 
-并在 WHMCS `System Setting -> Payment Gateways -> All Payment Gateways ` 启用扩展，并在 `System Setting -> Payment Gateways -> Manage Existing Gateways` 中配置相关信息。 请注意 `Addresses` 需要每行一个，为了保证支付效率，请根据自己的订单数量准备 USDT 地址。通常而已 TRC 20 交易会在半个小时内确认并完成交易。
+并在 WHMCS `System Setting -> Payment Gateways -> All Payment Gateways ` 启用扩展，并在 `System Setting -> Payment Gateways -> Manage Existing Gateways` 中配置相关信息。 请注意 `Addresses` 需要每行一个，为了保证支付效率，请根据自己的订单数量准备 USDT 地址。通常而言 TRC 20 交易会在半个小时内确认并完成交易。
 
 ### 运行流程
 
