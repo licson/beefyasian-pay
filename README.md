@@ -9,10 +9,10 @@
 
 ### Installation
 
-您可以使用以下链接下载最新版本的支付程序
+您可以使用以下命令下载最新版本的支付程序
 
 ```
-https://github.com/damonto/beefyasian-pay/archive/refs/heads/main.zip
+git clone https://github.com/licson/beefyasian-pay
 ```
 
 下载过后请按照项目目录结构将文件分别复制到 `includes/hooks` 和 `modules/gateways` 目录。
