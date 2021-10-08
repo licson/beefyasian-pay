@@ -57,6 +57,7 @@ class App
      * Create a new instance.
      *
      * @param   string  $addresses
+     * @param   bool    $configMode
      *
      * @return  void
      */
@@ -67,13 +68,15 @@ class App
             require_once dirname(__DIR__, 3) . DIRECTORY_SEPARATOR . 'includes/gatewayfunctions.php';
             require_once dirname(__DIR__, 3) . DIRECTORY_SEPARATOR . 'includes/invoicefunctions.php';
         } else {
-            if (empty($params)) {
-                $params = getGatewayVariables('beefyasianpay');
+            if (empty($params) && !$configMode) {
+                try {
+                    $params = getGatewayVariables('beefyasianpay');
+                } catch (Throwable $e) {}
             }
         }
 
-        $this->timeout = $params['timeout'];
-        $this->addresses = array_filter(preg_split("/\r\n|\n|\r/", $params['addresses']));
+        $this->timeout = $params['timeout'] ?? 30;
+        $this->addresses = array_filter(preg_split("/\r\n|\n|\r/", $params['addresses'] ?? ''));
 
         $this->smarty = new Smarty();
         $this->smarty->setTemplateDir(BEEFYASIAN_PAY_ROOT . DIRECTORY_SEPARATOR . 'templates');
