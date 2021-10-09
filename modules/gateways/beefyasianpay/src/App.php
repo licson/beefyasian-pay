@@ -303,7 +303,7 @@ class App
         $this->getTransactions($invoice['to_address'], $invoice['created_at'])
             ->each(function ($transaction) use ($invoice) {
                 // Only confirmed transactions can be processed.
-                if ($transaction->confirmed && $transaction->finalResult === 'success') {
+                if ($transaction['confirmed'] && mb_strtolower($transaction['finalResult']) === 'success') {
                     $whmcsTransaction = (new Transaction())->firstByTransId($transaction['transaction_id']);
                     $whmcsInvoice = Invoice::find($invoice['invoice_id']);
                     // If current invoice has been paid ignore it.
