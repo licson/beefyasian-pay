@@ -300,43 +300,41 @@ class App
      */
     protected function checkTransaction(BeefyAsianPayInvoice $invoice)
     {
-        // Only confirmed transactions can be processed.
-        $transactions = $this->getTransactions($invoice['to_address'], $invoice['created_at'])
-            ->filter(function ($transaction) {
-                return !$transaction->confirmed;
+        $this->getTransactions($invoice['to_address'], $invoice['created_at'])
+            ->each(function ($transaction) use ($invoice) {
+                // Only confirmed transactions can be processed.
+                if ($transaction->confirmed && $transaction->finalResult === 'success') {
+                    $whmcsTransaction = (new Transaction())->firstByTransId($transaction['transaction_id']);
+                    $whmcsInvoice = Invoice::find($invoice['invoice_id']);
+                    // If current invoice has been paid ignore it.
+                    if ($whmcsTransaction) {
+                        return;
+                    }
+
+                    if (mb_strtolower($whmcsInvoice['status']) === 'paid') {
+                        return;
+                    }
+
+                    $actualAmount = $transaction['quant'] / 1000000;
+                    AddInvoicePayment(
+                        $invoice['invoice_id'], // Invoice id
+                        $transaction['transaction_id'], // Transaction id
+                        $actualAmount, // Paid amount
+                        0, // Transaction fee
+                        'beefyasianpay' // Gateway
+                    );
+
+                    logTransaction('BeefyAsianPay', $transaction, 'Successfully Paid');
+
+                    $whmcsInvoice = $whmcsInvoice->refresh();
+                    // If the invoice has been paid in full, release the address, otherwise renew it.
+                    if (mb_strtolower($whmcsInvoice['status']) === 'paid') {
+                        $invoice->markAsPaid($transaction['from_address'], $transaction['transaction_id']);
+                    } else {
+                        $invoice->renew($this->timeout);
+                    }
+                }
             });
-
-        $transactions->each(function ($transaction) use ($invoice) {
-            $whmcsTransaction = (new Transaction())->firstByTransId($transaction['transaction_id']);
-            $whmcsInvoice = Invoice::find($invoice['invoice_id']);
-            // If current invoice has been paid ignore it.
-            if ($whmcsTransaction) {
-                return;
-            }
-
-            if (mb_strtolower($whmcsInvoice['status']) === 'paid') {
-                return;
-            }
-
-            $actualAmount = $transaction['quant'] / 1000000;
-            AddInvoicePayment(
-                $invoice['invoice_id'], // Invoice id
-                $transaction['transaction_id'], // Transaction id
-                $actualAmount, // Paid amount
-                0, // Transaction fee
-                'beefyasianpay' // Gateway
-            );
-
-            logTransaction('BeefyAsianPay', $transaction, 'Successfully Paid');
-
-            $whmcsInvoice = $whmcsInvoice->refresh();
-            // If the invoice has been paid in full, release the address, otherwise renew it.
-            if (mb_strtolower($whmcsInvoice['status']) === 'paid') {
-                $invoice->markAsPaid($transaction['from_address'], $transaction['transaction_id']);
-            } else {
-                $invoice->renew($this->timeout);
-            }
-        });
     }
 
     /**
