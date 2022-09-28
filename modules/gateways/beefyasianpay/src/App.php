@@ -302,37 +302,34 @@ class App
     {
         $this->getTransactions($invoice['to_address'], $invoice['created_at'])
             ->each(function ($transaction) use ($invoice) {
-                // Only confirmed transactions can be processed.
-                if ($transaction['confirmed'] && mb_strtolower($transaction['finalResult']) === 'success') {
-                    $whmcsTransaction = (new Transaction())->firstByTransId($transaction['transaction_id']);
-                    $whmcsInvoice = Invoice::find($invoice['invoice_id']);
-                    // If current invoice has been paid ignore it.
-                    if ($whmcsTransaction) {
-                        return;
-                    }
+                $whmcsTransaction = (new Transaction())->firstByTransId($transaction['transaction_id']);
+                $whmcsInvoice = Invoice::find($invoice['invoice_id']);
+                // If current invoice has been paid ignore it.
+                if ($whmcsTransaction) {
+                    return;
+                }
 
-                    if (mb_strtolower($whmcsInvoice['status']) === 'paid') {
-                        return;
-                    }
+                if (mb_strtolower($whmcsInvoice['status']) === 'paid') {
+                    return;
+                }
 
-                    $actualAmount = $transaction['quant'] / 1000000;
-                    AddInvoicePayment(
-                        $invoice['invoice_id'], // Invoice id
-                        $transaction['transaction_id'], // Transaction id
-                        $actualAmount, // Paid amount
-                        0, // Transaction fee
-                        'beefyasianpay' // Gateway
-                    );
+                $actualAmount = $transaction['value'] / 1000000;
+                AddInvoicePayment(
+                    $invoice['invoice_id'], // Invoice id
+                    $transaction['transaction_id'], // Transaction id
+                    $actualAmount, // Paid amount
+                    0, // Transaction fee
+                    'beefyasianpay' // Gateway
+                );
 
-                    logTransaction('BeefyAsianPay', $transaction, 'Successfully Paid');
+                logTransaction('BeefyAsianPay', $transaction, 'Successfully Paid');
 
-                    $whmcsInvoice = $whmcsInvoice->refresh();
-                    // If the invoice has been paid in full, release the address, otherwise renew it.
-                    if (mb_strtolower($whmcsInvoice['status']) === 'paid') {
-                        $invoice->markAsPaid($transaction['from_address'], $transaction['transaction_id']);
-                    } else {
-                        $invoice->renew($this->timeout);
-                    }
+                $whmcsInvoice = $whmcsInvoice->refresh();
+                // If the invoice has been paid in full, release the address, otherwise renew it.
+                if (mb_strtolower($whmcsInvoice['status']) === 'paid') {
+                    $invoice->markAsPaid($transaction['from'], $transaction['transaction_id']);
+                } else {
+                    $invoice->renew($this->timeout);
                 }
             });
     }
@@ -348,23 +345,23 @@ class App
     protected function getTransactions(string $address, Carbon $startDatetime): Collection
     {
         $http = new Client([
-            'base_uri' => 'https://apiasia.tronscan.io:5566',
+            'base_uri' => 'https://api.trongrid.io',
             'timeout' => 30,
         ]);
 
-        $response = $http->get('/api/token_trc20/transfers', [
+        $response = $http->get("/v1/accounts/{$address}/transactions/trc20", [
             'query' => [
-                'direction' => 'in',
-                'count' => 8,
-                'tokens' => 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t',
-                'start_timestamp' => $startDatetime->getTimestamp() * 1000,
-                'relatedAddress' => $address,
+                'limit' => 5,
+                'only_to' => true,
+                'only_confirmed' => true,
+                'contract_address' => 'TR7NHqjeKQxGTCi8q8ZY4pL8otSzgjLj6t',
+                'min_timestamp' => $startDatetime->getTimestamp() * 1000,
             ],
         ]);
 
         $response = json_decode($response->getBody()->getContents(), true);
 
-        return new Collection($response['token_transfers']);
+        return new Collection($response['data']);
     }
 
     /**
