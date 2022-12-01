@@ -8,6 +8,7 @@ use BeefyAsianPay\Models\Invoice;
 use BeefyAsianPay\Models\Transaction;
 use Carbon\Carbon;
 use GuzzleHttp\Client;
+use WHMCS\Database\Capsule;
 use Illuminate\Support\Collection;
 use RuntimeException;
 use Smarty;
@@ -255,10 +256,18 @@ class App
         if ($validAddress = $beefyInvoice->validInvoice($params['invoiceid'])) {
             $validAddress->renew($this->timeout);
             $validTill = Carbon::now()->addMinutes($this->timeout)->toDateTimeString();
-
+            $Currencyrate = Capsule::table("tblcurrencies")->where("code", "USD")->value("rate");
+            $Currencydefault = Capsule::table("tblcurrencies")->where("code", "USD")->value("default");
+            if($Currencydefault == '1'){
+             $amount=$params['amount'];
+            }else{
+             $amount=$params['amount']*$Currencyrate;
+            }
+            
+            
             return $this->view('payment.tpl', [
                 'address' => $validAddress['to_address'],
-                'amount' => $params['amount'],
+                'amount' => $amount,
                 'validTill' => $validTill,
             ]);
         } else {
@@ -313,8 +322,15 @@ class App
                 if (mb_strtolower($whmcsInvoice['status']) === 'paid') {
                     return;
                 }
-
+                
+                $Currencyrate = Capsule::table("tblcurrencies")->where("code", "USD")->value("rate");
+                $Currencydefault = Capsule::table("tblcurrencies")->where("code", "USD")->value("default");
+                if($Currencydefault == '1'){
                 $actualAmount = $transaction['value'] / 1000000;
+                }else{
+                $actualAmount = ($transaction['value'] / 1000000)/$Currencyrate;
+                }
+                
                 AddInvoicePayment(
                     $invoice['invoice_id'], // Invoice id
                     $transaction['transaction_id'], // Transaction id
