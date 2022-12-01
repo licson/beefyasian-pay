@@ -258,6 +258,7 @@ class App
 
             return $this->view('payment.tpl', [
                 'address' => $validAddress['to_address'],
+                'amount' => $params['amount'],
                 'validTill' => $validTill,
             ]);
         } else {
