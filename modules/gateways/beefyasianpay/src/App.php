@@ -415,8 +415,7 @@ class App
         }
 
         return (new Collection($response['result']))->filter(function ($transaction) use ($startDatetime, $address) {
-            return strtolower($transaction['to']) === strtolower($address);
-            // return $transaction['timeStamp'] >= $startDatetime->getTimestamp() && strtolower($transaction['to']) === strtolower($address);
+            return $transaction['timeStamp'] >= $startDatetime->getTimestamp() && strtolower($transaction['to']) === strtolower($address);
         });
     }
 
