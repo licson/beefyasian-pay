@@ -29,7 +29,7 @@
         width: 100%;
     }
 
-    #valid-till {
+    .valid-till {
         margin-top: 10px;
     }
 </style>
@@ -48,7 +48,7 @@
         <div class="copy-botton">
             <button id="clipboard-btn" class="btn btn-primary" type="button" data-clipboard-target="#address">COPY</button>
         </div>
-        <p id="valid-till">Valid till <span>{$validTill}</span></p>
+        <p class="valid-till">Valid till <span id="valid-till">{$validTill}</span></p>
     </p>
 </div>
 
