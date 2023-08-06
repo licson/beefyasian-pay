@@ -10,6 +10,7 @@
         display: flex;
         width: 100%;
         justify-content: center;
+        margin-top: 10px;
     }
 
     .address {
@@ -17,7 +18,7 @@
         border: 1px solid #eee;
         padding: 5px;
         border-radius: 4px;
-        margin-top: 10px;
+        margin-top: 20px;
     }
 
     .copy-botton {
@@ -27,24 +28,27 @@
     .copy-botton .btn {
         width: 100%;
     }
+
+    #valid-till {
+        margin-top: 10px;
+    }
 </style>
 
 <div style="width: 250px">
+    <select id="chain" class="custom-select">
+        {foreach from=$supportedChains key=value item=name}
+
+            <option value="{$value}" {($chain===$value) ? 'selected' : ''}>{$name}</option>
+        {/foreach}
+    </select>
     <div id="qrcode"></div>
-    <p>Valid till <span id="valid-till">{$validTill}</span></p>
     <p class="usdt-addr">
-        <select id="chain" class="custom-select">
-            {foreach from=$supportedChains key=value item=name}
-
-                <option value="{$value}" {($chain===$value) ? 'selected' : ''}>{$name}</option>
-            {/foreach}
-        </select>
-
         <input id="address" class="address" value="{$address}"></input>
 
         <div class="copy-botton">
             <button id="clipboard-btn" class="btn btn-primary" type="button" data-clipboard-target="#address">COPY</button>
         </div>
+        <p id="valid-till">Valid till <span>{$validTill}</span></p>
     </p>
 </div>
 
@@ -59,8 +63,8 @@
 
     new QRCode(document.querySelector('#qrcode'), {
         text: "{$address}",
-        width: 200,
-        height: 200,
+        width: 250,
+        height: 250,
     })
 
     $('#clipboard-btn').hover(() => {
