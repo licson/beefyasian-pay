@@ -401,7 +401,7 @@ class App
                     return;
                 }
 
-                $actualAmount = $transaction['value'] / 1000000;
+                $actualAmount = intval($transaction['value']) / 1000000;
                 AddInvoicePayment(
                     $invoice['invoice_id'], // Invoice id
                     $invoice['chain'] === 'TRC20' ? $transaction['transaction_id'] : $transaction['hash'], // Transaction id
