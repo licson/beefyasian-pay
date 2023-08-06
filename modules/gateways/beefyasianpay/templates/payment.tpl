@@ -29,9 +29,10 @@
 
 <div style="width: 250px">
     <div id="qrcode"></div>
+    <p>Blockchain: {$chain}</p>
     <p>Valid till <span id="valid-till">{$validTill}</span></p>
     <p class="usdt-addr">
-        <input id="address" class="address" value="{$address}"></span>
+        <input id="address" class="address" value="{$address}"></input>
 
         <div class="copy-botton">
             <button id="clipboard-btn" class="btn btn-primary" type="button" data-clipboard-target="#address">COPY</button>

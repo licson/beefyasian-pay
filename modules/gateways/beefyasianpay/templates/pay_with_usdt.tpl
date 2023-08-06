@@ -1,4 +1,9 @@
 <div class="pay">
+    <select id="chain" class="custom-select">
+        {foreach from=$supportedChains item=chain}
+            <option value="{$chain}">{$chain} USDT</option>
+        {/foreach}
+    </select>
     <button id="pay" class="btn btn-primary">
         <img src="https://coin.top/production/logo/usdtlogo.png" alt="USDT" class="img-fluid">
         Pay with USDT
@@ -7,7 +12,8 @@
 
 <script>
     $('#pay').on('click', () => {
-        fetch(window.location.href + '&act=create')
+        const chain = $('#chain').val()
+        fetch(window.location.href + '&act=create&chain=' + chain)
             .then((r) => r.json())
             .then((r) => {
                 if (r.status) {
@@ -20,6 +26,17 @@
 </script>
 
 <style>
+.pay {
+    display: flex;
+    flex-direction: column;
+    width: 180px;
+    margin: 0 auto;
+}
+
+.pay #chain {
+    margin-bottom: 10px;
+}
+
 .pay img {
     height: 25px;
 }

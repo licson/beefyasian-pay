@@ -21,6 +21,7 @@ class BeefyAsianPayInvoice extends Model
      * @var string[]
      */
     protected $fillable = [
+        'chain',
         'invoice_id',
         'to_address',
         'from_address',
@@ -53,15 +54,17 @@ class BeefyAsianPayInvoice extends Model
     /**
      * Assoicated with an invoice.
      *
+     * @param   string  $chain
      * @param   string  $address
      * @param   int     $invoiceId
      * @param   int     $timeout
      *
      * @return  void
      */
-    public function associate(string $address, int $invoiceId, int $timeout = 30)
+    public function associate(string $chain, string $address, int $invoiceId, int $timeout = 30)
     {
         $this->newQuery()->create([
+            'chain' => $chain,
             'to_address' => $address,
             'invoice_id' => $invoiceId,
             'expires_on' => Carbon::now()->addMinutes($timeout),
@@ -139,7 +142,7 @@ class BeefyAsianPayInvoice extends Model
             'transaction_id' => $transactionId,
             'is_released' => true,
         ])
-        ->save();
+            ->save();
     }
 
     /**
