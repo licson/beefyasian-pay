@@ -312,6 +312,11 @@ class App
                 return count($this->addresses[$chain]) > 0;
             });
 
+            foreach ($supportedChains as $key => $value) {
+                if ($key == 'TRC20') $supportedChains[$key] = 'Tron (TRC20)';
+                else $supportedChains[$key] = 'Polygon (MATIC)';
+            }
+
             return $this->view('pay_with_usdt.tpl', [
                 'supportedChains' => $supportedChains,
             ]);
@@ -370,7 +375,7 @@ class App
                     return;
                 }
 
-                $actualAmount = $invoice['chain'] === 'TRC20' ? $transaction['value'] / 1000000 : $transaction['value'] / 1000000000000000000;
+                $actualAmount = $transaction['value'] / 1000000;
                 AddInvoicePayment(
                     $invoice['invoice_id'], // Invoice id
                     $invoice['chain'] === 'TRC20' ? $transaction['transaction_id'] : $transaction['hash'], // Transaction id
@@ -408,7 +413,7 @@ class App
 
         $params = getGatewayVariables('beefyasianpay');
 
-        $response = $http->get("/api?module=account&action=txlist&address={$address}&page=1&offset=10&sort=desc&apikey={$params['polygonscan_api_key']}']}");
+        $response = $http->get("/api?module=account&action=tokentx&address={$address}&page=1&offset=10&sort=desc&apikey={$params['polygonscan_api_key']}']}");
         $response = json_decode($response->getBody()->getContents(), true);
         if ($response['message'] !== 'OK') {
             throw new RuntimeException($response['message']);

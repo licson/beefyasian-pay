@@ -1,7 +1,7 @@
 <div class="pay">
     <select id="chain" class="custom-select">
-        {foreach from=$supportedChains item=chain}
-            <option value="{$chain}">{$chain} USDT</option>
+        {foreach from=$supportedChains key=chain item=name}
+            <option value="{$chain}">{$name}</option>
         {/foreach}
     </select>
     <button id="pay" class="btn btn-primary">
