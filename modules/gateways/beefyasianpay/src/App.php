@@ -188,9 +188,34 @@ class App
                 $this->renderInvoiceStatusJson($params);
             case 'create':
                 $this->createBeefyAsianPayInvoice($_GET['chain'] ?? 'TRC20', $params);
+            case 'switch_chain':
+                return $this->switchChain($_GET['chain'], $params);
             default:
                 return $this->renderPaymentHTML($params);
         }
+    }
+
+    /**
+     * Switch chain.
+     *
+     * @param   string  $chain
+     * @param   array   $params
+     *
+     * @return  void
+     */
+    protected function switchChain(string $chain, array $params)
+    {
+        $beefyInvoice = (new BeefyAsianPayInvoice())->firstValidByInvoiceId($params['invoiceid']);
+        if ($beefyInvoice['chain'] !== $chain) {
+            (new BeefyAsianPayInvoice())->deassociate($beefyInvoice['to_address'], $params['invoiceid']);
+
+            return $this->createBeefyAsianPayInvoice($chain, $params);
+        }
+
+        $this->json([
+            'status' => false,
+            'error' => 'The invoice has been associated with a USDT address please refresh the invoice page.',
+        ]);
     }
 
     /**
@@ -298,6 +323,15 @@ class App
     {
         $beefyInvoice = new BeefyAsianPayInvoice();
 
+        $currectChains = array_filter(array_keys($this->addresses), function ($chain) {
+            return count($this->addresses[$chain]) > 0;
+        });
+
+        $supportedChains = [];
+        foreach ($currectChains as $value) {
+            $supportedChains[$value] = $value == 'TRC20' ? 'Tron (TRC20)' : 'Polygon (MATIC)';
+        }
+
         if ($validAddress = $beefyInvoice->validInvoice($params['invoiceid'])) {
             $validAddress->renew($this->timeout);
             $validTill = Carbon::now()->addMinutes($this->timeout)->toDateTimeString();
@@ -306,17 +340,9 @@ class App
                 'address' => $validAddress['to_address'],
                 'chain' => $validAddress['chain'],
                 'validTill' => $validTill,
+                'supportedChains' => $supportedChains,
             ]);
         } else {
-            $supportedChains = array_filter(array_keys($this->addresses), function ($chain) {
-                return count($this->addresses[$chain]) > 0;
-            });
-
-            foreach ($supportedChains as $key => $value) {
-                if ($key == 'TRC20') $supportedChains[$key] = 'Tron (TRC20)';
-                else $supportedChains[$key] = 'Polygon (MATIC)';
-            }
-
             return $this->view('pay_with_usdt.tpl', [
                 'supportedChains' => $supportedChains,
             ]);

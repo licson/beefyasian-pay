@@ -17,11 +17,13 @@
         border: 1px solid #eee;
         padding: 5px;
         border-radius: 4px;
+        margin-top: 10px;
     }
 
     .copy-botton {
         width: 100%;
     }
+
     .copy-botton .btn {
         width: 100%;
     }
@@ -29,9 +31,15 @@
 
 <div style="width: 250px">
     <div id="qrcode"></div>
-    <p>Blockchain: {$chain}</p>
     <p>Valid till <span id="valid-till">{$validTill}</span></p>
     <p class="usdt-addr">
+        <select id="chain" class="custom-select">
+            {foreach from=$supportedChains key=value item=name}
+
+                <option value="{$value}" {($chain===$value) ? 'selected' : ''}>{$name}</option>
+            {/foreach}
+        </select>
+
         <input id="address" class="address" value="{$address}"></input>
 
         <div class="copy-botton">
@@ -57,6 +65,17 @@
 
     $('#clipboard-btn').hover(() => {
         $('#clipboard-btn').text('COPY')
+    })
+
+    $('#chain').on('change', () => {
+        const value = $('#chain').val()
+        fetch(window.location.href + '&act=switch_chain&chain=' + value)
+            .then(r => r.json())
+            .then(r => {
+                if (r.status) {
+                    window.location.reload(true)
+                }
+            })
     })
 
     window.localStorage.removeItem('whmcs_usdt_invoice')
