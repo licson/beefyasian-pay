@@ -72,6 +72,25 @@ class BeefyAsianPayInvoice extends Model
     }
 
     /**
+     * Deassoicated with an invoice.
+     *
+     * @param   string  $chain
+     * @param   string  $address
+     * @param   int     $invoiceId
+     * @param   int     $timeout
+     *
+     * @return  void
+     */
+    public function dissociate(string $address, int $invoiceId)
+    {
+        $this->newQuery()
+            ->where('to_address', $address)
+            ->where('invoice_id', $invoiceId)
+            ->whereNull('transaction_id')
+            ->update(['is_released' => true, 'expires_on' => Carbon::now()]);
+    }
+
+    /**
      * Determine if there is an invoice within the validity period.
      *
      * @param   int  $invoiceId

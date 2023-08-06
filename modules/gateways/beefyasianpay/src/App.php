@@ -207,7 +207,7 @@ class App
     {
         $beefyInvoice = (new BeefyAsianPayInvoice())->firstValidByInvoiceId($params['invoiceid']);
         if ($beefyInvoice['chain'] !== $chain) {
-            (new BeefyAsianPayInvoice())->deassociate($beefyInvoice['to_address'], $params['invoiceid']);
+            (new BeefyAsianPayInvoice())->dissociate($beefyInvoice['to_address'], $params['invoiceid']);
 
             return $this->createBeefyAsianPayInvoice($chain, $params);
         }
