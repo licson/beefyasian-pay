@@ -74,10 +74,8 @@ class BeefyAsianPayInvoice extends Model
     /**
      * Deassoicated with an invoice.
      *
-     * @param   string  $chain
      * @param   string  $address
      * @param   int     $invoiceId
-     * @param   int     $timeout
      *
      * @return  void
      */
