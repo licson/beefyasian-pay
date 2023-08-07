@@ -329,7 +329,7 @@ class App
 
         $supportedChains = [];
         foreach ($currectChains as $value) {
-            $supportedChains[$value] = $value == 'TRC20' ? 'Tron (TRC20)' : 'Polygon (MATIC)';
+            $supportedChains[$value] = $value == 'TRC20' ? 'USDT ( Tron / TRC20 )' : 'USDT ( Polygon / MATIC / ERC20 )';
         }
 
         if ($validAddress = $beefyInvoice->validInvoice($params['invoiceid'])) {
