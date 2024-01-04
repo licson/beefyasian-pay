@@ -8,6 +8,7 @@ use BeefyAsianPay\Models\Invoice;
 use BeefyAsianPay\Models\Transaction;
 use Carbon\Carbon;
 use GuzzleHttp\Client;
+use WHMCS\Database\Capsule;
 use Illuminate\Support\Collection;
 use RuntimeException;
 use Smarty;
@@ -98,6 +99,72 @@ class App
         $this->smarty->setCompileDir(WHMCS_ROOT . DIRECTORY_SEPARATOR . 'templates_c');
     }
 
+    /**
+    * Convert the given amount to USD based on the currency rate from the database.
+    *
+    * @param float $amount The amount to be converted.
+    * @param string $currency The original currency of the amount.
+    * @return float The converted amount in USD.
+    */
+    protected function convertToUSD(float $amount, string $currency): float
+    {
+        if ($currency == 'USD') {
+            return $amount;
+        }
+        //check if usd currency is exsits
+        $isUsdCurrencyExists = Capsule::table("tblcurrencies")->where("code", "USD")->exists();
+        if (!$isUsdCurrencyExists) {
+            throw new RuntimeException("no USD currency exists in WHMCS");
+        }
+        //make sure that the default currency is USD
+        $isUsdCurrencyDefault = Capsule::table("tblcurrencies")->where("code", "USD")->value("default");
+        
+        if ($isUsdCurrencyDefault != '1') {
+            
+            $currencyRate = Capsule::table("tblcurrencies")->where("code", $currency)->value("rate");
+            return $amount * $currencyRate;
+        } else if Capsule::table("tblcurrencies")->where("code", $currency)->value("default") == '1' {
+            //If the invoice currency is default, convert the amount by dividing by the currency rate
+            $currencyRate = Capsule::table("tblcurrencies")->where("code", "USD")->value("rate");
+            return $amount / $currencyRate;
+        } else {
+            throw new RuntimeException("The default currency is not USD");
+        }
+    }
+
+    /**
+    * Convert the given amount of invoice currency to USD given on the currency rate from the database.
+    *
+    * @param float $amount The amount to be converted.
+    * @param string $currency The original currency of the amount.
+    * @return float The converted amount in USD.
+    */
+    protected function convertToInvoiceCurrency(float $amount,  string $currency): float
+    {   
+        if ($currency == 'USD') {
+            return $amount;
+        }
+        //check if usd currency is exsits
+        $isUsdCurrencyExists = Capsule::table("tblcurrencies")->where("code", "USD")->exists();
+        if (!$isUsdCurrencyExists) {
+            throw new RuntimeException("no USD currency exists in WHMCS");
+        }
+        //make sure that the default currency is USD
+        $isUsdCurrencyDefault = Capsule::table("tblcurrencies")->where("code", "USD")->value("default");
+        
+        if ($isUsdCurrencyDefault != '1') {
+            
+            $currencyRate = Capsule::table("tblcurrencies")->where("code", $currency)->value("rate");
+            return $amount * $currencyRate;
+        } else if Capsule::table("tblcurrencies")->where("code", $currency)->value("default") == '1' {
+            //If the invoice currency is default, convert the amount by dividing by the currency rate
+            $currencyRate = Capsule::table("tblcurrencies")->where("code", "USD")->value("rate");
+            return $amount / $currencyRate;
+        } else {
+            //this is a collection behavior, which means should not encounter error. But should not be here.
+            return $amount;
+        }
+    }
     /**
      * Parse addresses.
      *
@@ -335,9 +402,16 @@ class App
         if ($validAddress = $beefyInvoice->validInvoice($params['invoiceid'])) {
             $validAddress->renew($this->timeout);
             $validTill = Carbon::now()->addMinutes($this->timeout)->toDateTimeString();
+             // convert the invoice amount to USD
+             if $params['currency'] == '' {
+                // if the currency is empty, the amount will not shown in the invoice
+                $convertedAmount = 0;
+             }
+            $convertedAmount = $this->convertToUSD($params['amount'],$params['currency']);
 
             return $this->view('payment.tpl', [
                 'address' => $validAddress['to_address'],
+                'amount' => $convertedAmount,
                 'chain' => $validAddress['chain'],
                 'validTill' => $validTill,
                 'supportedChains' => $supportedChains,
@@ -400,8 +474,16 @@ class App
                 if (mb_strtolower($whmcsInvoice['status']) === 'paid') {
                     return;
                 }
-
-                $actualAmount = intval($transaction['value']) / 1000000;
+                
+                
+                $transactionAmount = $transaction['value'] / 1000000; // 转换为单位为USDT的金额
+                if $params['currency'] == '' {
+                    // if the currency is empty, the amount will not converted.
+                    $transactionAmount = $transactionAmount
+                } else {
+                    $transactionAmount = $this->convertToInvoiceCurrency($transactionAmount,$params['currency']);
+                }
+                
                 AddInvoicePayment(
                     $invoice['invoice_id'], // Invoice id
                     $invoice['chain'] === 'TRC20' ? $transaction['transaction_id'] : $transaction['hash'], // Transaction id
