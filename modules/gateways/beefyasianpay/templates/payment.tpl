@@ -52,7 +52,7 @@
     <div id="qrcode"></div>
     <p class="usdt-addr">
         <input id="address" class="address" value="{$address}"></input>
-        <!-- if amount is 0, do not display amount -->
+        {* if amount is 0, do not display amount *}
         {if $amount != 0}
         <p class="amount-display"><span id="amount">{$amount}</span> {$value} USDT</p>
         <p class="warning"> 警告! 请确保向 {$value} 链地址转指定金额（{$amount}  USDT), 否则支付可能不会成功。</p>
