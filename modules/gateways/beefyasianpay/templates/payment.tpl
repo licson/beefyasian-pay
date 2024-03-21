@@ -32,6 +32,14 @@
     .valid-till {
         margin-top: 10px;
     }
+    .amount-display {
+        font-size: 1.5em; /* 放大金额显示 */
+        color: red; /* 设置金额颜色为红色 */
+    }
+    .warning {
+        font-size: 1em;
+        color: black;
+    }
 </style>
 
 <div style="width: 250px">
@@ -44,7 +52,12 @@
     <div id="qrcode"></div>
     <p class="usdt-addr">
         <input id="address" class="address" value="{$address}"></input>
-
+        //if amount is 0, do not display amount
+        {if $amount != 0}
+        <p class="amount-display"><span id="amount">{$amount}</span> {$value} USDT</p>
+        <p class="warning"> 警告! 请确保向 {$value} 链地址转指定金额（{$amount}  USDT), 否则支付可能不会成功。</p>
+        <p class="warning"> Warning! Please make sure to transfer exact {$amount} USDT to the {$value} chain address, otherwise the payment may not be successful.</p>
+        {/if}
         <div class="copy-botton">
             <button id="clipboard-btn" class="btn btn-primary" type="button" data-clipboard-target="#address">COPY</button>
         </div>
