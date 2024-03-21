@@ -57,6 +57,7 @@
         <p class="amount-display"><span id="amount">{$amount}</span> {$value} USDT</p>
         <p class="warning"> 警告! 请确保向 {$value} 链地址转指定金额（{$amount}  USDT), 否则支付可能不会成功。</p>
         <p class="warning"> Warning! Please make sure to transfer exact {$amount} USDT to the {$value} chain address, otherwise the payment may not be successful.</p>
+        <p class="warning"> Внимание! Пожалуйста, убедитесь, что вы переводите ровно {$amount} USDT на адрес сети {$value}, иначе платеж может не пройти успешно.</p>
         {/if}
         <div class="copy-botton">
             <button id="clipboard-btn" class="btn btn-primary" type="button" data-clipboard-target="#address">COPY</button>
