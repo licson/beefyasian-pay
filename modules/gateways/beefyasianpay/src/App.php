@@ -70,8 +70,7 @@ class App
     /**
      * Create a new instance.
      *
-     * @param   string  $addresses
-     * @param   bool    $configMode
+     * @param   array  $params
      *
      * @return  void
      */
@@ -82,7 +81,7 @@ class App
             require_once dirname(__DIR__, 3) . DIRECTORY_SEPARATOR . 'includes/gatewayfunctions.php';
             require_once dirname(__DIR__, 3) . DIRECTORY_SEPARATOR . 'includes/invoicefunctions.php';
         } else {
-            if (empty($params) && !$configMode) {
+            if (empty($params)) {
                 try {
                     $params = getGatewayVariables('beefyasianpay');
                 } catch (Throwable $e) {
