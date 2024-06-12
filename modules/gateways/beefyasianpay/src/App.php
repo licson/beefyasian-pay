@@ -300,9 +300,9 @@ class App
      */
     protected function json(array $json)
     {
-        $json = json_encode($json);
+        http_response_code(200);
         header('Content-Type: application/json');
-        echo $json;
+        echo json_encode($json);
 
         if (function_exists('fastcgi_finish_request')) {
             fastcgi_finish_request();
